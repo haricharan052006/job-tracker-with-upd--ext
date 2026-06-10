@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface Job {
   id: string;
@@ -10,38 +10,69 @@ interface Job {
   createdAt: Date;
 }
 
+const INITIAL_MOCK_JOBS: Job[] = [
+  {
+    id: "1",
+    company: "Google",
+    role: "Software Engineering Intern",
+    status: "APPLIED",
+    createdAt: new Date("2026-06-01"),
+  },
+  {
+    id: "2",
+    company: "Stripe",
+    role: "Frontend Engineer",
+    status: "INTERVIEWING",
+    createdAt: new Date("2026-06-05"),
+  },
+  {
+    id: "3",
+    company: "Meta",
+    role: "Product Designer",
+    status: "OFFERED",
+    createdAt: new Date("2026-06-08"),
+  },
+  {
+    id: "4",
+    company: "Netflix",
+    role: "Fullstack Developer",
+    status: "REJECTED",
+    createdAt: new Date("2026-05-20"),
+  },
+];
+
 export default function DashboardPage() {
-  // Hardcoded mock data array for fully isolated UI iteration
-  const [jobs, setJobs] = useState<Job[]>([
-    {
-      id: "1",
-      company: "Google",
-      role: "Software Engineering Intern",
-      status: "APPLIED",
-      createdAt: new Date("2026-06-01"),
-    },
-    {
-      id: "2",
-      company: "Stripe",
-      role: "Frontend Engineer",
-      status: "INTERVIEWING",
-      createdAt: new Date("2026-06-05"),
-    },
-    {
-      id: "3",
-      company: "Meta",
-      role: "Product Designer",
-      status: "OFFERED",
-      createdAt: new Date("2026-06-08"),
-    },
-    {
-      id: "4",
-      company: "Netflix",
-      role: "Fullstack Developer",
-      status: "REJECTED",
-      createdAt: new Date("2026-05-20"),
-    },
-  ]);
+  const [localJobs, setLocalJobs] = useState<Job[]>([]);
+  const [extensionJobs, setExtensionJobs] = useState<Job[]>([]);
+
+  // Periodically fetch extension jobs from the API route for real-time updates
+  useEffect(() => {
+    const fetchExtensionJobs = async () => {
+      try {
+        const res = await fetch("/api/jobs/extension");
+        const data = await res.json();
+        if (data.success && data.jobs) {
+          const parsedJobs = data.jobs.map((j: any) => ({
+            ...j,
+            createdAt: new Date(j.createdAt),
+          }));
+          setExtensionJobs(parsedJobs);
+        }
+      } catch (err) {
+        console.error("Failed to fetch extension jobs:", err);
+      }
+    };
+
+    fetchExtensionJobs(); // initial fetch
+    const interval = setInterval(fetchExtensionJobs, 2000); // check for new scraped jobs every 2 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Merge lists and sort by date descending so newest additions appear at the top
+  const jobs = [...localJobs, ...extensionJobs, ...INITIAL_MOCK_JOBS].sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+  );
 
   // Form State
   const [company, setCompany] = useState("");
@@ -65,7 +96,7 @@ export default function DashboardPage() {
       createdAt: new Date(),
     };
 
-    setJobs([newJob, ...jobs]);
+    setLocalJobs([newJob, ...localJobs]);
     setCompany("");
     setRole("");
     setStatus("APPLIED");
