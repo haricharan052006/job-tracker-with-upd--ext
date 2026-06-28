@@ -1,5 +1,4 @@
 const dns = require('dns');
-
 dns.resolve6('db.oqgktcryvqvgkwnjtefb.supabase.co', (err, addresses) => {
   console.log('resolve6 db:', err, addresses);
 });
